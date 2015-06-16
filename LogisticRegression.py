@@ -3,7 +3,7 @@
 @author: Andrew
 """
 
-""" import all necessary libraries """
+""" Import all necessary libraries """
 
 import numpy as np
 import matplotlib.pyplot as plt
