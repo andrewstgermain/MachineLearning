@@ -96,8 +96,9 @@ def sigmoidGradient(z):
 # y outputs, Lambda value, and number of labels (K)
 # Theta1, Theta2, X, and y should all be matrices
 def costFunction(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize):
-    Theta1 = np.reshape(Theta[0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
-    Theta2 = np.reshape(Theta[(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
+    Theta = np.matrix(Theta)
+    Theta1 = np.reshape(Theta[0,0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
+    Theta2 = np.reshape(Theta[0,(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
     # m is the number of examples
     m = np.size(y)
     # n is the number of features (pixels)
@@ -121,8 +122,9 @@ def costFunction(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize):
 
 # Calculates the gradient of the cost function
 def costGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize):
-    Theta1 = np.reshape(Theta[0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
-    Theta2 = np.reshape(Theta[(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
+    Theta = np.matrix(Theta)
+    Theta1 = np.reshape(Theta[0,0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
+    Theta2 = np.reshape(Theta[0,(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
     # m is the number of examples
     m = np.size(y)
     # n is the number of features (pixels)
@@ -171,8 +173,42 @@ def costGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize):
     grad[:,0:np.size(D1)] = np.reshape(D1,np.size(D1))
     grad[:,np.size(D1):np.size(grad)+1] = np.reshape(D2,np.size(D2))
     return grad
+    
+# Computes the numerical gradient of the cost function given Theta values
+def numericalGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize):
+    numgrad = np.matrix(np.zeros(np.size(Theta)))
+    perturb = np.matrix(np.zeros(np.size(Theta)))
+    e = 1e-4
+    n = 0
+    for p in range(np.size(Theta)):
+        n += 1
+        print n
+        # Set perturbation vector
+        perturb[0,p] = e
+        loss1 = costFunction(Theta - perturb,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
+        loss2 = costFunction(Theta + perturb,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
+        # Compute Numerical Gradient
+        numgrad[0,p] = (loss2 - loss1) / (2.0*e)
+        perturb[0,p] = 0
+    return numgrad
 
-data = getData('train.csv',100)
+# Predicts the output values for a set of data given theta values
+def predict(Theta1, Theta2, X):
+    # m is the number of examples
+    m = np.size(X[:,0])
+    # n is the number of features (pixels)
+    n = np.size(X[0,:])
+    
+    a1 = np.matrix(np.ones([m,n+1]))
+    a1[:,1:n+1] = X
+    h1 = sigmoid(a1 * np.transpose(Theta1))
+    a2 = np.matrix(np.ones([m,np.size(h1[0,:])+1]))
+    a2[:,1:np.size(h1[0,:])+1] = h1
+    h2 = sigmoid(a2 * np.transpose(Theta2))
+    p = np.argmax(h2, axis = 1)
+    return p
+
+data = getData('train.csv',1000)
 #visualizeData(data)
 
 # y is the actual value of each digit
@@ -180,35 +216,59 @@ y = data[:,0]
 # X is the input of features (pixels) for each digit
 X = data[:,1:np.size(data[0,:])+1]
 
-# Choose the number of features to have in the hidden layer
-numberFeaturesHidden = 25
 # K is the number of labels output (10 for 10 digits)
 K = 10
 # Lambda is the regularization constant
-Lambda = 0
+Lambda = 1
+# Number of features in the input layer (only can be 784 in this case)
 inputLayerSize = 784
+# Choose the number of features to have in the hidden layer (can be changed)
 hiddenLayerSize = 25
 
 # Theta1 is the matrix of theta weight values between the input layer and
 # the hidden layer, and Theta2 is between the hidden layer and output layer
-Theta1 = initializeTheta(np.size(X[0,:]),numberFeaturesHidden)
-Theta2 = initializeTheta(numberFeaturesHidden,K)
+Theta1 = initializeTheta(np.size(X[0,:]),hiddenLayerSize)
+Theta2 = initializeTheta(hiddenLayerSize,K)
 
 Theta = np.zeros([1,np.size(Theta1)+np.size(Theta2)])
+print np.shape(Theta)
 print np.size(Theta[:,0:np.size(Theta1)])
 Theta[:,0:np.size(Theta1)] = np.reshape(Theta1,np.size(Theta1))
 Theta[:,np.size(Theta1):np.size(Theta)+1] = np.reshape(Theta2,np.size(Theta2))
+print np.shape(Theta)
 
 print np.size(Theta1)
 print np.size(Theta2)
 
-#J = costFunction(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
-#grad = costGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
+
+J = costFunction(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
+grad = costGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
 #print J
 #print grad
-Result = op.minimize(fun = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), method = 'TNC', jac = costGradient)
-
+Result = op.minimize(fun = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), method = 'TNC', jac = costGradient, options = {'maxiter':500})
 print Result
+#numgrad = numericalGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
+#print numgrad
+print J
+print grad
+#diff = np.linalg.norm(numgrad-grad)/np.linalg.norm(numgrad+grad)
+#print diff
+Theta = np.matrix(Result.x)
+Theta1 = np.reshape(Theta[0,0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
+Theta2 = np.reshape(Theta[0,(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
+
+data = getData('train.csv',1000)
+y = data[:,0]
+X = data[:,1:np.size(data[0,:])+1]
+p = predict(Theta1,Theta2,X)
+
+correct = (p == y)
+
+print str((np.sum(correct)/float(np.size(y)))*100)+ " % correct"
+
+
+
+
 
 
 
