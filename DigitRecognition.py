@@ -8,6 +8,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize as op
+import PIL
+import pygame as pg
+from pygame.locals import *
 
 
 """ Define all of the function needed to run the program """
@@ -66,7 +69,7 @@ def getDataList(fileName):
 def visualizeData(data):
     #answers = data[:,0]
     #print answers
-    data = data[:,1:785]
+    #data = data[:,1:785]
     numberOfDigits = np.size(data[:,0])
     for digit in range(numberOfDigits):
         pixels = data[digit,:]
@@ -208,13 +211,14 @@ def predict(Theta1, Theta2, X):
     p = np.argmax(h2, axis = 1)
     return p
 
-data = getData('train.csv',1000)
-#visualizeData(data)
 
+# Get the training data from the file
+data = getData('train.csv',100)
 # y is the actual value of each digit
 y = data[:,0]
 # X is the input of features (pixels) for each digit
 X = data[:,1:np.size(data[0,:])+1]
+#visualizeData(X)
 
 # K is the number of labels output (10 for 10 digits)
 K = 10
@@ -245,7 +249,9 @@ J = costFunction(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
 grad = costGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
 #print J
 #print grad
-Result = op.minimize(fun = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), method = 'TNC', jac = costGradient, options = {'maxiter':500})
+#Result = op.minimize(fun = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), method = 'TNC', jac = costGradient, options = {'maxiter':100})
+Result = op.fmin_tnc(func = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), fprime = costGradient, maxfun = 100)
+#Result = op.fmin_bfgs(f = costFunction, x0 = Theta, args = (X,y,Lambda,K,inputLayerSize,hiddenLayerSize), fprime = costGradient, maxiter = 100)
 print Result
 #numgrad = numericalGradient(Theta,X,y,Lambda,K,inputLayerSize,hiddenLayerSize)
 #print numgrad
@@ -257,15 +263,90 @@ Theta = np.matrix(Result.x)
 Theta1 = np.reshape(Theta[0,0:hiddenLayerSize * (inputLayerSize + 1)], [hiddenLayerSize, (inputLayerSize + 1)])
 Theta2 = np.reshape(Theta[0,(hiddenLayerSize * (inputLayerSize + 1)):np.size(Theta)+1], [K, (hiddenLayerSize + 1)]) 
 
-data = getData('train.csv',1000)
+data = getData('train.csv',4200)
 y = data[:,0]
 X = data[:,1:np.size(data[0,:])+1]
 p = predict(Theta1,Theta2,X)
 
 correct = (p == y)
 
-print str((np.sum(correct)/float(np.size(y)))*100)+ " % correct"
+print str((np.sum(correct)/float(np.size(y)))*100)+ " % correct for training data"
 
+data = getData('train.csv',8400)
+y = data[4200:8401,0]
+X = data[4200:8401,1:np.size(data[0,:])+1]
+p = predict(Theta1,Theta2,X)
+
+correct = (p == y)
+
+print str((np.sum(correct)/float(np.size(y)))*100)+ " % correct for test data"
+
+"""
+dataFile = open("Theta.txt","w")
+for i in range(np.size(Theta[:,0])):
+    for j in range(np.size(Theta[0,:])):
+        dataFile.write(str(Theta[i,j]) + " ")
+    dataFile.write("\n")
+dataFile.close()
+
+print "DONE"
+"""
+
+"""
+numbers = np.matrix(np.zeros([10,784]))
+numbers[0,:] = np.reshape((255-np.array(PIL.Image.open("Number0.jpg").convert("L"))),[1,784])
+numbers[1,:] = np.reshape((255-np.array(PIL.Image.open("Number1.jpg").convert("L"))),[1,784])
+numbers[2,:] = np.reshape((255-np.array(PIL.Image.open("Number2.jpg").convert("L"))),[1,784])
+numbers[3,:] = np.reshape((255-np.array(PIL.Image.open("Number3.jpg").convert("L"))),[1,784])
+numbers[4,:] = np.reshape((255-np.array(PIL.Image.open("Number4.jpg").convert("L"))),[1,784])
+numbers[5,:] = np.reshape((255-np.array(PIL.Image.open("Number5.jpg").convert("L"))),[1,784])
+numbers[6,:] = np.reshape((255-np.array(PIL.Image.open("Number6.jpg").convert("L"))),[1,784])
+numbers[7,:] = np.reshape((255-np.array(PIL.Image.open("Number7.jpg").convert("L"))),[1,784])
+numbers[8,:] = np.reshape((255-np.array(PIL.Image.open("Number8.jpg").convert("L"))),[1,784])
+numbers[9,:] = np.reshape((255-np.array(PIL.Image.open("Number9.jpg").convert("L"))),[1,784])
+#for i in range(10):
+#    numbers[i] = numbers[i].reshape([1,784])
+visualizeData(numbers)
+x = np.matrix(numbers)
+p = predict(Theta1,Theta2,x)
+print p
+"""
+
+
+"""
+pg.display.init()
+
+screen = pg.display.set_mode([140,140])
+
+white = (255,255,255)
+color = (0,0,0)
+
+screen.fill(white)
+
+while True:
+    for event in pg.event.get():
+        if event.type == QUIT:
+            pg.quit()
+        elif event.type == pg.MOUSEMOTION:
+            endPos = pg.mouse.get_pos()
+            if pg.mouse.get_pressed()==(1,0,0):
+                pg.draw.line(screen,color,startPos,endPos,10)
+            startPos=endPos
+        pressed=pg.key.get_pressed()
+        if pressed[K_RETURN]:
+            pg.image.save(screen,'image.png')
+            image = PIL.Image.open("image.png").convert("L")
+            image = image.resize((28,28))
+            number = np.array(image)
+            x = 255 - number.reshape([1,784])
+            visualizeData(x)
+            p = predict(Theta1,Theta2,x)
+            print p
+        if pressed[K_c]:
+            screen.fill(white)
+            
+        pg.display.update()
+"""
 
 
 
